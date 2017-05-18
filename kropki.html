@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+
+<style>
+line{
+  stroke:black;
+  pointer-events:none;
+}
+
+.selected{
+  fill:red;
+  stroke:red;
+}
+
+.my_map{
+  user-select:none
+}
+
+.btn_div{
+  position: absolute;
+  top: 1200;
+  left: 0;
+}
+</style>
+
+<title>Kropki</title>
+
+<script src="https://d3js.org/d3.v4.min.js"></script>
+
+<body>
+<img class='my_map' src='pietro2.png' alt='Mapka' style="position:absolute">
+
+<div class="btn_div" style="position:absolute; top:1200px">
+
+<p id='selected_dot_data'>Kropka niewybrana</p>
+<p>PRIORITY | NUMBER | NAME | FLOOR</p>
+<input size="2" type="text" name="priority" class="enter" id="dot_priority"/>
+<input type="text" name="number" class="enter"  id="dot_number"/>
+<input type="text" name="name" class="enter"  id="dot_name"/>
+<input size="2"type="text" name="floor" class="enter"  id="dot_floor"/>
+</br>
+<button class="btn" onclick="update_dot_data()">Aktualizuj kropkę</button>
+<br/>
+
+<p id='type_dot'>Typ kropka</p>
+<button class="btn" onclick="save_type_dot()">Typ kropka</button>
+<button class="btn" onclick="save_type_room()">Typ sala</button>
+<button class="btn" onclick="save_type_stairs()">Typ schody</button>
+<button class="btn" onclick="save_type_lift()">Typ winda</button>
+<button class="btn" onclick="generuj_json()">Generuj JSON</button>
+<p id='json'></p>
+</div>
+
+
+<script type='application/javascript'>
+  function save_type_dot(){
+    dot_type = "point";
+    document.getElementById('type_dot').innerHTML = "Typ kropka";
+  }
+  function save_type_room(){
+    dot_type = "room";
+    document.getElementById('type_dot').innerHTML = "Typ sala";
+  }
+  function save_type_stairs(){
+    dot_type = "stair";
+    document.getElementById('type_dot').innerHTML = "Typ schody";
+  }
+  function save_type_lift(){
+    dot_type = "lift";
+    document.getElementById('type_dot').innerHTML = "Typ winda";
+  }
+
+  function update_dot_data(){
+    //console.log(selected_dot);
+    dot_priority = document.getElementById('dot_priority').value;
+    if(dot_priority != null){
+      dots_data[selected_dot].priority = dot_priority;
+    }
+    dot_number = document.getElementById('dot_number').value;
+    if(dot_number != null){
+      dots_data[selected_dot].dnumber = dot_number;
+    }
+    dot_name = document.getElementById('dot_name').value;
+    if(dot_name != null){
+      dots_data[selected_dot].name = dot_name;
+    }
+    dot_floor = document.getElementById('dot_floor').value;
+    if(dot_floor != null){
+      dots_data[selected_dot].floor = dot_floor;
+    }
+    show_selected_dot_data()
+  }
+
+  function show_selected_dot_data(){
+    var cdot = dots_data[selected_dot]
+    var sd_data = "priority: " + cdot.priority + " number: " + cdot.dnumber + "<br/> name: " + cdot.name + " floor: " + cdot.floor + " type: " + cdot.type; 
+
+    document.getElementById('selected_dot_data').innerHTML = sd_data;
+  }
+
+  function generuj_json(){
+    var PIETRO = 1;
+    var text_json = '[<br/>';
+    //var id = 0;
+    for(var i = 0; i < dataset.length; i++){
+     if(dots_data[i].type != "room"){
+       text_json += '{ <br/>"idPoint":' + (i + start_id_from) + ',<br/>"floor": '+ dots_data[i].floor + ',<br/>"position":{<br/> "x":' + dataset[i].x + ',<br/> "y":' + Math.floor(dataset[i].y) + " }, <br/> ";
+       text_json += '"type":"' + dots_data[i].type + '", <br/>';
+       var connected_dots = [];
+       console.log(dots_data);
+       for(var j = 0; j < lines.length; j++){
+         if(lines[j].end == i && dots_data[lines[j].start].type == "point"){
+           console.log(dots_data[lines[j].end].type)
+           console.log("j: " + lines[j].end + " i: " + i + "<br>"); 
+           connected_dots.push(lines[j].start);
+         }
+         if(lines[j].start == i && dots_data[lines[j].end].type == "point"){
+           console.log(dots_data[lines[j].start].type) 
+           console.log("j: " + lines[j].start + " i: " + i + "<br>"); 
+           connected_dots.push(lines[j].end);
+         }
+       }
+       if(connected_dots.length > 0){
+         text_json += '"nextPoints":['; 
+         for(var k = 0; k < connected_dots.length; k++){
+           text_json += (connected_dots[k] + start_id_from);
+           if(k<connected_dots.length-1){
+             text_json += ",";
+           }
+         }
+         text_json += "],<br/>"
+         text_json += '"distPoints":[';
+         for(var k = 0; k < connected_dots.length; k++){
+           x1 = dataset[connected_dots[k]].x;
+           x2 = dataset[i].x;
+           y1 = dataset[connected_dots[k]].y;
+           y2 = dataset[i].y;
+           text_json += Math.floor(Math.sqrt(Math.pow((x1-x2),2) + Math.pow((y1-y2),2)));
+           if(k<connected_dots.length-1){
+             text_json += ",";
+           }
+         }
+         text_json += "]<br/>"
+       }
+       text_json += "}"
+       if(i<dataset.length - 1){
+         text_json += ",<br/>"
+       }
+      }
+    }
+    text_json += "<br/>]";
+    text_json += "<br/>###########################################<br/>";
+    text_json += "[<br/>";
+    for(var i = 0; i < dataset.length; i++){
+      if(dots_data[i].type == "room"){
+       text_json += '{ <br/>"idRoom":' + (i + start_id_from) + ',<br/>"number":"' + dots_data[i].dnumber + '",<br/>"name":"' + dots_data[i].name + '", <br/> ';
+      
+       var idPoint = null;
+       for(var j = 0; j < lines.length; j++){
+         if(lines[j].end == i){
+           idPoint = lines[j].start;
+         }
+         if(lines[j].start == i){
+           idPoint = lines[j].end;
+         }
+       }
+       text_json += '"idPoint":' + (idPoint + start_id_from) + ', <br/>';
+       text_json += '"floor":"' + dots_data[i].floor + '", <br/>';
+       text_json += '"position":{<br/> "x":' + dataset[i].x + ',<br/> "y":' + Math.floor(dataset[i].y) + " },<br/>";
+       text_json += '"priority":' + dots_data[i].priority + '},<br/>';
+
+      }
+    }  
+    
+    text_json += "<br/>]";
+    
+    console.log(lines)
+    document.getElementById('json').innerHTML = text_json;
+
+  }
+
+var dataset = [];
+var lines = [];
+var radius = 5;
+var state = "dotting";
+var last_line;
+
+var line_dots = [];
+var selected_dot;
+
+var dots_data = [];
+
+var dot_type = "point";
+var floor_number = 1;
+var start_id_from = 98;
+
+var canvas = d3.select("body").append("svg")
+    .attr("height", 922)
+    .attr("width", 1119)
+    .attr("x", 0)
+    .attr("y", 0)
+    .attr("style", "position:absolute")
+    .attr("left", 0)
+    .on("click", mouseClick);
+
+
+function mouseClick(event) {
+   if(d3.event.target.tagName == "svg" && state == 'dotting') {
+   var coords = d3.mouse(this);
+   var newData= {
+     x: coords[0], 
+     y: coords[1]
+   };
+   line_dots.push([]);
+
+   dataset.push(newData);
+   dots_data.push({type:dot_type, dnumber:'', name:'', priority:"1", floor:floor_number});
+   refresh();
+   }
+   else if(d3.event.target.tagName == "circle"){
+                if(state == "lining"){
+                   connect_dots();
+                   state = "dotting";
+                }
+                else
+                {
+                  
+                  state = "lining";
+                  var line = start_connecting_dots();            
+                      d3.select("body").on("keyup", function() {
+                      if(d3.event.key == "Escape") {
+                          dont_line(line);
+                          lines.pop();
+                          state = 'dotting'
+                      }
+                      if(d3.event.key == "Delete") {
+                         remove_dot(selected_dot, line);
+                         state = "dotting";
+                     }
+                      
+                    })
+
+                 }  
+    }
+  
+   function connect_dots(){
+       var selected = d3.select(d3.event.target).datum();
+       
+       lines[lines.length-1]["end"] = dataset.indexOf(selected);
+       dont_line(lines[lines.length-1].line);
+       refresh();
+       line_dots[lines[lines.length - 1].start].push([lines[lines.length-1]["line"], "start"]);
+       line_dots[lines[lines.length - 1].end].push([lines[lines.length-1]["line"], "end"]);
+       d3.select("svg").on("mousemove", null);
+    
+   }
+
+   function start_connecting_dots(){
+       d3.selectAll("circle").classed("selected", false);
+       var selected = d3.select(d3.event.target).datum();
+       d3.select(d3.event.target).classed("selected", true);
+       selected_dot = dataset.indexOf(selected);
+       show_selected_dot_data();
+       var line = d3.select("svg").append("line")
+         .attr('x1', selected.x)
+         .attr('y1', selected.y)
+         .attr('x2', d3.event.layerX)
+         .attr('y2', d3.event.layerY);
+        
+        lines.push({'start': dataset.indexOf(selected), 'line' : line});
+        d3.select("svg").on("mousemove", function() {
+                      line
+                       .attr('x2', d3.event.layerX)
+                       .attr('y2', d3.event.layerY);
+                    })
+        return line;            
+
+   }
+
+   function remove_dot(selected_dot,line){
+      dataset.splice(selected_dot, 1);
+      dots_data.splice(selected_dot, 1);
+      dont_line(line);
+      lines = lines.filter((line)=>{
+         return line.end != selected_dot && line.start != selected_dot && line.end != null;
+      });
+      for(var i = 0; i < lines.length; i++){
+        if(lines[i].start > selected_dot){
+           lines[i].start = lines[i].start-1;
+        }
+        if(lines[i].end > selected_dot){
+           lines[i].end = lines[i].end-1;
+        }
+      }
+     
+      lines_to_delete = []
+      for(var i = 0; i < line_dots[selected_dot].length; i++){
+          lines_to_delete.push(line_dots[selected_dot][i][0]);
+      }
+      line_dots.splice(selected_dot,1);
+      if(lines_to_delete.length > 0){
+        indexes_to_delete = []
+        for(var i = 0; i < line_dots.length; i++){
+            for(var j = 0; j < line_dots[i].length ; j++){
+              for(var k = 0; k < lines_to_delete.length; k++){
+                if(line_dots[i][j][0] == lines_to_delete[k]){
+                  indexes_to_delete.push([i,j]);
+                }
+              }
+            }
+        }
+        for(var i = 0; i< indexes_to_delete.length; i++){
+        }
+        for(var i = 0; i< indexes_to_delete.length; i++){
+          line_dots[indexes_to_delete[i][0]].splice(indexes_to_delete[i][1], 1);
+        }
+      }
+      
+      refresh();
+   }
+
+   function dont_line(line){
+      line.remove()
+      d3.select("body").on("keyup", null);
+   }
+
+   function refresh(){
+   var circles = 
+   canvas.selectAll("circle")
+            .data(dataset);
+
+            circles.enter()
+              .append("circle")
+              .attr('cx', (d) => d.x)
+              .attr('cy', (d) => d.y)
+              .attr('r', radius)
+              .call(d3.drag().on("drag", function(d,i) {
+                d3.select(this)
+                  .attr('cx', d.x = d3.event.x)
+                  .attr('cy', d.y = d3.event.y);
+                  dragged_lines = line_dots[i];
+                  for(var j = 0; j < dragged_lines.length; j++){
+                     if(dragged_lines[j][1] == 'start'){
+                       dragged_lines[j][0]
+                       .attr('x1', d3.event.x)
+                       .attr('y1', d3.event.y);
+
+                     }
+                     if(dragged_lines[j][1] == 'end'){
+                      dragged_lines[j][0]
+                       .attr('x2', d3.event.x)
+                       .attr('y2', d3.event.y);
+                     }  
+                  }
+                  refresh();
+              }))
+
+
+        circles.exit().remove();  
+        circles
+          .attr('cx', (d) => d.x)
+          .attr('cy', (d) => d.y)
+          .attr('r', radius)
+
+  list_lines = canvas.selectAll("line")
+      .data(lines);
+      list_lines.enter()
+         .append("line")
+         .attr('x1', (line) => dataset[line.start].x)
+         .attr('y1', (line) => dataset[line.start].y)
+         .attr('x2', (line) => dataset[line.end].x)
+         .attr('y2', (line) => dataset[line.end].y)
+ 
+ list_lines.exit().remove();  
+        list_lines
+         .attr('x1', (line) => dataset[line.start].x)
+         .attr('y1', (line) => dataset[line.start].y)
+         .attr('x2', (line) => dataset[line.end].x)
+         .attr('y2', (line) => dataset[line.end].y)
+    }
+}
+
+</script>
+</body>
+</html>
